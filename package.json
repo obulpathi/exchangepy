@@ -1,0 +1,9 @@
+{
+	"name"        :"node-bitcoin-exchange",
+	"version"     :"0.0.1",
+	"private"     :true,
+	"dependencies":{
+		"pg"       :">= 0.7.2",
+		"socket.io":">= 0.9.6"
+	}
+}
