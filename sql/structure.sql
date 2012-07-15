@@ -287,6 +287,7 @@ BEGIN
 			o.buy_sell = false
 			AND o.symbol = NEW.symbol
 			AND o.status = 'active'
+			AND o.exp_dt >= NOW()
 			AND o.unfilled > 0
 			AND o.price <= NEW.price
 			AND o.users != NEW.users
@@ -301,6 +302,7 @@ BEGIN
 			o.buy_sell = true
 			AND o.symbol = NEW.symbol
 			AND o.status = 'active'
+			AND o.exp_dt >= NOW()
 			AND o.unfilled > 0
 			AND o.price >= NEW.price
 			AND o.users != NEW.users
@@ -460,6 +462,12 @@ BEGIN
 	END LOOP;
 
 	CLOSE c_orders;
+
+	IF NEW.types = 'fok' AND v_unfilled > 0 THEN
+		RETURN NULL;
+	ELSEIF NEW.types = 'iok' AND v_unfilled > 0 THEN
+		NEW.status = 'filled';
+	END IF;
 
 	PERFORM symbol_update_bidask(NEW.symbol);
 
