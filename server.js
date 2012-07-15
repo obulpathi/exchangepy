@@ -1,16 +1,37 @@
-var io = require('socket.io').listen(80);
+var app = require('http').createServer(handler)
+	, io = require('socket.io').listen(app)
+	, path = require('path')
+	, exchange = require('./lib/exchange')
+	, fs = require('fs');
 
-io.sockets.on('connection', function (socket) {
-	socket.emit('auth');
-	socket.on('login', function (data) {
-		if ( data.login == 'santa' ){
-			console.log('Logged in');
+app.listen(8080);
 
-			socket.on('cmd', function (data) {
-				console.log(data);
+function handler(request, response)
+{
+	var filePath = './public' + request.url;
+	if (filePath == './public/')
+		filePath = './public/index.html';
+
+	path.exists(filePath, function (exists)
+	{
+		if (exists) {
+			fs.readFile(filePath, function (error, content)
+			{
+				if (error) {
+					response.writeHead(500);
+					response.end();
+				} else {
+					response.writeHead(200, { 'Content-Type':'text/html' });
+					response.end(content, 'utf-8');
+				}
 			});
-		}else{
-			socket.disconnect();
+		} else {
+			response.writeHead(404);
+			response.end();
 		}
 	});
-});
+
+}
+
+var exch = new exchange();
+exch.bind_socket_io_events(io);

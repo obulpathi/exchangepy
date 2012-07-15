@@ -1,0 +1,11 @@
+<script src="/socket.io/socket.io.js"></script>
+<script>
+	var socket = io.connect('http://localhost');
+	socket.on('connection', function (data)
+	{
+		socket.on('auth', function (data)
+		{
+			socket.emit('login', { login:santa });
+		});
+	});
+</script>
