@@ -1,11 +1,23 @@
 <script src="/socket.io/socket.io.js"></script>
 <script>
-	var socket = io.connect('http://localhost');
-	socket.on('connection', function (data)
+	var socket = io.connect('http://localhost/');
+
+	socket.on('error', function (data)
 	{
-		socket.on('auth', function (data)
-		{
-			socket.emit('login', { login:santa });
+		console.log(data.msg);
+	});
+
+	socket.on('connect', function (data)
+	{
+		//socket.emit('login', { id:3, timestamp:new Date().getTime(), hash:'' });
+		socket.emit('login', { id:3, timestamp:'1342366323893', hash:'32b35e8619d33ab882af7cf5464d5535feeeebe4' });
+	});
+
+	socket.on('loggedin', function (data)
+	{
+		socket.emit('cmd', {
+			hash   :'32b35e8619d33ab882af7cf5464d5535feeeebe4',
+			payload:{action:'order', type:'gtc', amount:50}
 		});
 	});
 </script>
