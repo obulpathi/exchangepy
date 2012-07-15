@@ -29,3 +29,7 @@ INSERT INTO orders_limit VALUES ( nextval('orders_id_seq'::regclass), 2, 2, NOW(
 5.0000,318.0000, 318.0000,
 'active','gtc');
 
+INSERT INTO orders_limit VALUES ( nextval('orders_id_seq'::regclass), 2, 2, NOW(), NOW() + INTERVAL '1 day', false,
+5.0000,318.0000, 318.0000,
+'active','iok');
+

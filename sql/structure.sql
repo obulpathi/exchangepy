@@ -463,10 +463,13 @@ BEGIN
 
 	CLOSE c_orders;
 
-	IF NEW.types = 'fok' AND v_unfilled > 0 THEN
-		RETURN NULL;
-	ELSEIF NEW.types = 'iok' AND v_unfilled > 0 THEN
-		NEW.status = 'filled';
+	IF NEW.types = 'iok' AND v_unfilled > 0 THEN
+		UPDATE
+			orders_limit
+		SET
+			status = 'filled'
+		WHERE
+			id = NEW.id;
 	END IF;
 
 	PERFORM symbol_update_bidask(NEW.symbol);
