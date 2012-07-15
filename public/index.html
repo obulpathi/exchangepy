@@ -1,11 +1,12 @@
 <script src="/socket.io/socket.io.js"></script>
 <script src="http://crypto-js.googlecode.com/svn/tags/3.0.2/build/rollups/sha1.js"></script>
+<script src=" https://ajax.googleapis.com/ajax/libs/jquery/1.7.2/jquery.min.js"></script>
 <script>
 
 	var acc_id = 3;
 	var api_key = 'qweqwe';
 
-	var socket = io.connect('http://localhost/');
+	var socket = io.connect('http://ubu:8080/');
 
 	socket.on('error', function (data)
 	{
