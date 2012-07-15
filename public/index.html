@@ -1,5 +1,10 @@
 <script src="/socket.io/socket.io.js"></script>
+<script src="http://crypto-js.googlecode.com/svn/tags/3.0.2/build/rollups/sha1.js"></script>
 <script>
+
+	var acc_id = 3;
+	var api_key = 'qweqwe';
+
 	var socket = io.connect('http://localhost/');
 
 	socket.on('error', function (data)
@@ -9,15 +14,21 @@
 
 	socket.on('connect', function (data)
 	{
-		//socket.emit('login', { id:3, timestamp:new Date().getTime(), hash:'' });
-		socket.emit('login', { id:3, timestamp:'1342366323893', hash:'32b35e8619d33ab882af7cf5464d5535feeeebe4' });
+		var timestamp = new Date().getTime();
+		var hash = CryptoJS.SHA1(api_key + timestamp);
+		socket.emit('login', { id : acc_id, timestamp : timestamp, hash : hash.toString(CryptoJS.enc.Hex)});
 	});
 
 	socket.on('loggedin', function (data)
 	{
+		var payload = {action : 'new_order', type : 'gtc', amount : 50};
+		var timestamp = new Date().getTime();
+		var hash = CryptoJS.SHA1(api_key + timestamp + JSON.stringify(payload));
+
 		socket.emit('cmd', {
-			hash   :'32b35e8619d33ab882af7cf5464d5535feeeebe4',
-			payload:{action:'order', type:'gtc', amount:50}
+			hash      : hash.toString(CryptoJS.enc.Hex),
+			timestamp : timestamp,
+			payload   : payload
 		});
 	});
 </script>
