@@ -22,7 +22,16 @@
 
 	socket.on('loggedin', function (data)
 	{
-		var payload = {action : 'new_order', type : 'gtc', amount : 50};
+		var payload = {
+			action   : 'new_order',
+			symbol   : 'btcusd',
+			expire   : new Date(),
+			buy_sell : true,
+			price    : 5.834545454545454,
+			type     : 'gtc',
+			amount   : 5.834545454545454
+		};
+
 		var timestamp = new Date().getTime();
 		var hash = CryptoJS.SHA1(api_key + timestamp + JSON.stringify(payload));
 
