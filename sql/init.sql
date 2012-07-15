@@ -16,9 +16,16 @@ INSERT INTO users VALUES (3, 'ninja@mail.ru', 'qweqwe', '13:30:56.971909', 2);
 
 UPDATE balances SET balance = 100;
 
-INSERT INTO orders_limit VALUES ( nextval('orders_id_seq'::regclass), 3, 2, NOW(), false, 5.2000, 70.0000, 70.0000,'active');
+INSERT INTO orders_limit VALUES ( nextval('orders_id_seq'::regclass), 3, 2, NOW(), NOW() + INTERVAL '1 day', false,
+5.2000, 70.0000, 70.0000,'active', 'gtc');
 
 
-INSERT INTO orders_limit VALUES ( nextval('orders_id_seq'::regclass), 2, 1, NOW(), true, 5.0000,318.0000, 318.0000,'active');
-INSERT INTO orders_limit VALUES ( nextval('orders_id_seq'::regclass), 2, 2, NOW(), false, 5.0000,318.0000, 318.0000,'active');
+INSERT INTO orders_limit VALUES ( nextval('orders_id_seq'::regclass), 2, 1, NOW(), NOW() + INTERVAL '1 day', true,
+5.0000,
+318.0000,
+318.0000,'active', 'gtc');
+
+INSERT INTO orders_limit VALUES ( nextval('orders_id_seq'::regclass), 2, 2, NOW(), NOW() + INTERVAL '1 day', false,
+5.0000,318.0000, 318.0000,
+'active','gtc');
 

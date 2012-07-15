@@ -542,11 +542,13 @@ BEGIN
 			2,
 			b.users,
 			NOW(),
+			NOW() + INTERVAL '365 day',
 			CASE WHEN b.balance > 0 THEN FALSE ELSE TRUE END as buy_sell,
 			CASE WHEN b.balance > 0 THEN 0.0001 ELSE 999 END as price,
 			@b.balance,
 			@b.balance,
-			'active'
+			'active',
+			'gtc'
 		FROM
 			balances as b
 		WHERE
@@ -669,11 +671,13 @@ CREATE TABLE orders_limit (
     symbol smallint NOT NULL,
     users integer NOT NULL,
     dt timestamp without time zone NOT NULL,
+    exp_dt timestamp without time zone,
     buy_sell boolean NOT NULL,
     price numeric(8,4) NOT NULL,
     amount numeric(8,2) NOT NULL,
     unfilled numeric(8,2) NOT NULL,
-    status character varying(10) NOT NULL
+    status character varying(10) NOT NULL,
+    types character varying(10) NOT NULL
 );
 
 
