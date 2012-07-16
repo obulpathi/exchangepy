@@ -847,7 +847,8 @@ CREATE TABLE transfers (
     symbol smallint NOT NULL,
     amount numeric(14,4) NOT NULL,
     balance numeric(14,4) NOT NULL,
-    status character varying DEFAULT 'in progress'::character varying NOT NULL
+    status character varying DEFAULT 'in progress'::character varying NOT NULL,
+    dt_status timestamp without time zone
 );
 
 
