@@ -14,6 +14,7 @@ SET search_path = public, pg_catalog;
 ALTER TABLE ONLY public.users DROP CONSTRAINT users_currency_fkey;
 ALTER TABLE ONLY public.transfers DROP CONSTRAINT transfers_users_fkey;
 ALTER TABLE ONLY public.transfers DROP CONSTRAINT transfers_symbol_fkey;
+ALTER TABLE ONLY public.transfers_codes DROP CONSTRAINT transfers_codes_id_fkey;
 ALTER TABLE ONLY public.transfers_btc DROP CONSTRAINT transfers_btc_id_fkey;
 ALTER TABLE ONLY public.orders_stop DROP CONSTRAINT orders_stop_users_fkey;
 ALTER TABLE ONLY public.orders_stop DROP CONSTRAINT orders_stop_symbol_fkey;
@@ -33,6 +34,8 @@ DROP INDEX public.i_ol_dt;
 ALTER TABLE ONLY public.users DROP CONSTRAINT users_pkey;
 ALTER TABLE ONLY public.users DROP CONSTRAINT users_email_key;
 ALTER TABLE ONLY public.transfers DROP CONSTRAINT transfers_pkey;
+ALTER TABLE ONLY public.transfers_codes DROP CONSTRAINT transfers_codes_id_key;
+ALTER TABLE ONLY public.transfers_codes DROP CONSTRAINT transfers_codes_code_key;
 ALTER TABLE ONLY public.transfers_btc DROP CONSTRAINT transfers_btc_trans_key;
 ALTER TABLE ONLY public.transfers_btc DROP CONSTRAINT transfers_btc_id_key;
 ALTER TABLE ONLY public.symbols DROP CONSTRAINT symbols_symbol_key;
@@ -51,6 +54,7 @@ ALTER TABLE public.fees ALTER COLUMN id DROP DEFAULT;
 DROP SEQUENCE public.users_id_seq;
 DROP TABLE public.users;
 DROP SEQUENCE public.transfers_id_seq;
+DROP TABLE public.transfers_codes;
 DROP TABLE public.transfers_btc;
 DROP TABLE public.transfers;
 DROP SEQUENCE public.symbols_id_seq;
@@ -899,6 +903,25 @@ COMMENT ON COLUMN transfers_btc.conf IS 'Confirmations';
 
 
 --
+-- Name: transfers_codes; Type: TABLE; Schema: public; Owner: exchange; Tablespace: 
+--
+
+CREATE TABLE transfers_codes (
+    id integer NOT NULL,
+    code character varying(52) NOT NULL
+);
+
+
+ALTER TABLE public.transfers_codes OWNER TO exchange;
+
+--
+-- Name: TABLE transfers_codes; Type: COMMENT; Schema: public; Owner: exchange
+--
+
+COMMENT ON TABLE transfers_codes IS 'Codes';
+
+
+--
 -- Name: transfers_id_seq; Type: SEQUENCE; Schema: public; Owner: exchange
 --
 
@@ -1077,6 +1100,22 @@ ALTER TABLE ONLY transfers_btc
 
 
 --
+-- Name: transfers_codes_code_key; Type: CONSTRAINT; Schema: public; Owner: exchange; Tablespace: 
+--
+
+ALTER TABLE ONLY transfers_codes
+    ADD CONSTRAINT transfers_codes_code_key UNIQUE (code);
+
+
+--
+-- Name: transfers_codes_id_key; Type: CONSTRAINT; Schema: public; Owner: exchange; Tablespace: 
+--
+
+ALTER TABLE ONLY transfers_codes
+    ADD CONSTRAINT transfers_codes_id_key UNIQUE (id);
+
+
+--
 -- Name: transfers_pkey; Type: CONSTRAINT; Schema: public; Owner: exchange; Tablespace: 
 --
 
@@ -1231,6 +1270,14 @@ ALTER TABLE ONLY orders_stop
 
 ALTER TABLE ONLY transfers_btc
     ADD CONSTRAINT transfers_btc_id_fkey FOREIGN KEY (id) REFERENCES transfers(id) ON UPDATE RESTRICT ON DELETE RESTRICT;
+
+
+--
+-- Name: transfers_codes_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: exchange
+--
+
+ALTER TABLE ONLY transfers_codes
+    ADD CONSTRAINT transfers_codes_id_fkey FOREIGN KEY (id) REFERENCES transfers(id) ON UPDATE RESTRICT ON DELETE RESTRICT;
 
 
 --
