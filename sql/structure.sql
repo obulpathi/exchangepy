@@ -341,13 +341,19 @@ BEGIN
 		v_bp_my	= buying_power(NEW.users);
 
 		IF v_bp_my <= 0 THEN
-			PERFORM punish( NEW.id, NEW.unfilled );
+			PERFORM punish( NEW.id, v_unfilled * 1.003 );
 			EXIT;
+		END IF;
+
+		-- If v_unfilled is less than v_effective
+
+		IF v_unfilled < v_effective THEN
+			v_effective = v_unfilled;
 		END IF;
 
 		IF v_bp_my < v_effective * 1.003 THEN
 			v_effective = v_bp_my;
-			PERFORM punish( NEW.id, NEW.unfilled - v_bp_my );
+			PERFORM punish( NEW.id, v_unfilled * 1.003 - v_bp_my );
 		END IF;
 
 		-- Updating balances + orders
