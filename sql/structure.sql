@@ -12,6 +12,9 @@ SET escape_string_warning = off;
 SET search_path = public, pg_catalog;
 
 ALTER TABLE ONLY public.users DROP CONSTRAINT users_currency_fkey;
+ALTER TABLE ONLY public.transfers DROP CONSTRAINT transfers_users_fkey;
+ALTER TABLE ONLY public.transfers DROP CONSTRAINT transfers_symbol_fkey;
+ALTER TABLE ONLY public.transfers_btc DROP CONSTRAINT transfers_btc_id_fkey;
 ALTER TABLE ONLY public.orders_stop DROP CONSTRAINT orders_stop_users_fkey;
 ALTER TABLE ONLY public.orders_stop DROP CONSTRAINT orders_stop_symbol_fkey;
 ALTER TABLE ONLY public.orders_limit DROP CONSTRAINT orders_limit_users_fkey;
@@ -29,6 +32,9 @@ DROP INDEX public.i_users;
 DROP INDEX public.i_ol_dt;
 ALTER TABLE ONLY public.users DROP CONSTRAINT users_pkey;
 ALTER TABLE ONLY public.users DROP CONSTRAINT users_email_key;
+ALTER TABLE ONLY public.transfers DROP CONSTRAINT transfers_pkey;
+ALTER TABLE ONLY public.transfers_btc DROP CONSTRAINT transfers_btc_trans_key;
+ALTER TABLE ONLY public.transfers_btc DROP CONSTRAINT transfers_btc_id_key;
 ALTER TABLE ONLY public.symbols DROP CONSTRAINT symbols_symbol_key;
 ALTER TABLE ONLY public.symbols DROP CONSTRAINT symbols_pkey;
 ALTER TABLE ONLY public.orders_stop DROP CONSTRAINT orders_stop_pkey;
@@ -37,12 +43,16 @@ ALTER TABLE ONLY public.matched DROP CONSTRAINT matched_buy_sell_key;
 ALTER TABLE ONLY public.fees DROP CONSTRAINT fees_pkey;
 ALTER TABLE ONLY public.balances DROP CONSTRAINT balances_user_symbol_key;
 ALTER TABLE public.users ALTER COLUMN id DROP DEFAULT;
+ALTER TABLE public.transfers ALTER COLUMN id DROP DEFAULT;
 ALTER TABLE public.symbols ALTER COLUMN id DROP DEFAULT;
 ALTER TABLE public.orders_stop ALTER COLUMN id DROP DEFAULT;
 ALTER TABLE public.orders_limit ALTER COLUMN id DROP DEFAULT;
 ALTER TABLE public.fees ALTER COLUMN id DROP DEFAULT;
 DROP SEQUENCE public.users_id_seq;
 DROP TABLE public.users;
+DROP SEQUENCE public.transfers_id_seq;
+DROP TABLE public.transfers_btc;
+DROP TABLE public.transfers;
 DROP SEQUENCE public.symbols_id_seq;
 DROP TABLE public.symbols;
 DROP SEQUENCE public.orders_stop_id_seq;
@@ -601,7 +611,7 @@ SET default_with_oids = false;
 CREATE TABLE balances (
     users integer NOT NULL,
     symbol smallint NOT NULL,
-    balance numeric(10,4) NOT NULL
+    balance numeric(14,4) NOT NULL
 );
 
 
@@ -822,6 +832,94 @@ ALTER SEQUENCE symbols_id_seq OWNED BY symbols.id;
 
 
 --
+-- Name: transfers; Type: TABLE; Schema: public; Owner: exchange; Tablespace: 
+--
+
+CREATE TABLE transfers (
+    id integer NOT NULL,
+    dt timestamp without time zone NOT NULL,
+    users integer NOT NULL,
+    in_out boolean NOT NULL,
+    symbol smallint NOT NULL,
+    amount numeric(14,4) NOT NULL,
+    balance numeric(14,4) NOT NULL,
+    status character varying DEFAULT 'in progress'::character varying NOT NULL
+);
+
+
+ALTER TABLE public.transfers OWNER TO exchange;
+
+--
+-- Name: TABLE transfers; Type: COMMENT; Schema: public; Owner: exchange
+--
+
+COMMENT ON TABLE transfers IS 'In/out transfers';
+
+
+--
+-- Name: transfers_btc; Type: TABLE; Schema: public; Owner: exchange; Tablespace: 
+--
+
+CREATE TABLE transfers_btc (
+    id integer NOT NULL,
+    trans character varying(52) NOT NULL,
+    address character varying(34) NOT NULL,
+    conf smallint NOT NULL
+);
+
+
+ALTER TABLE public.transfers_btc OWNER TO exchange;
+
+--
+-- Name: TABLE transfers_btc; Type: COMMENT; Schema: public; Owner: exchange
+--
+
+COMMENT ON TABLE transfers_btc IS 'BTC transfers';
+
+
+--
+-- Name: COLUMN transfers_btc.trans; Type: COMMENT; Schema: public; Owner: exchange
+--
+
+COMMENT ON COLUMN transfers_btc.trans IS 'Bitcoin transaction id';
+
+
+--
+-- Name: COLUMN transfers_btc.address; Type: COMMENT; Schema: public; Owner: exchange
+--
+
+COMMENT ON COLUMN transfers_btc.address IS 'Bitcoin address';
+
+
+--
+-- Name: COLUMN transfers_btc.conf; Type: COMMENT; Schema: public; Owner: exchange
+--
+
+COMMENT ON COLUMN transfers_btc.conf IS 'Confirmations';
+
+
+--
+-- Name: transfers_id_seq; Type: SEQUENCE; Schema: public; Owner: exchange
+--
+
+CREATE SEQUENCE transfers_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MAXVALUE
+    NO MINVALUE
+    CACHE 1;
+
+
+ALTER TABLE public.transfers_id_seq OWNER TO exchange;
+
+--
+-- Name: transfers_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: exchange
+--
+
+ALTER SEQUENCE transfers_id_seq OWNED BY transfers.id;
+
+
+--
 -- Name: users; Type: TABLE; Schema: public; Owner: exchange; Tablespace: 
 --
 
@@ -896,6 +994,13 @@ ALTER TABLE ONLY symbols ALTER COLUMN id SET DEFAULT nextval('symbols_id_seq'::r
 -- Name: id; Type: DEFAULT; Schema: public; Owner: exchange
 --
 
+ALTER TABLE ONLY transfers ALTER COLUMN id SET DEFAULT nextval('transfers_id_seq'::regclass);
+
+
+--
+-- Name: id; Type: DEFAULT; Schema: public; Owner: exchange
+--
+
 ALTER TABLE ONLY users ALTER COLUMN id SET DEFAULT nextval('users_id_seq'::regclass);
 
 
@@ -953,6 +1058,30 @@ ALTER TABLE ONLY symbols
 
 ALTER TABLE ONLY symbols
     ADD CONSTRAINT symbols_symbol_key UNIQUE (symbol);
+
+
+--
+-- Name: transfers_btc_id_key; Type: CONSTRAINT; Schema: public; Owner: exchange; Tablespace: 
+--
+
+ALTER TABLE ONLY transfers_btc
+    ADD CONSTRAINT transfers_btc_id_key UNIQUE (id);
+
+
+--
+-- Name: transfers_btc_trans_key; Type: CONSTRAINT; Schema: public; Owner: exchange; Tablespace: 
+--
+
+ALTER TABLE ONLY transfers_btc
+    ADD CONSTRAINT transfers_btc_trans_key UNIQUE (trans);
+
+
+--
+-- Name: transfers_pkey; Type: CONSTRAINT; Schema: public; Owner: exchange; Tablespace: 
+--
+
+ALTER TABLE ONLY transfers
+    ADD CONSTRAINT transfers_pkey PRIMARY KEY (id);
 
 
 --
@@ -1094,6 +1223,30 @@ ALTER TABLE ONLY orders_stop
 
 ALTER TABLE ONLY orders_stop
     ADD CONSTRAINT orders_stop_users_fkey FOREIGN KEY (users) REFERENCES users(id) ON UPDATE RESTRICT ON DELETE RESTRICT;
+
+
+--
+-- Name: transfers_btc_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: exchange
+--
+
+ALTER TABLE ONLY transfers_btc
+    ADD CONSTRAINT transfers_btc_id_fkey FOREIGN KEY (id) REFERENCES transfers(id) ON UPDATE RESTRICT ON DELETE RESTRICT;
+
+
+--
+-- Name: transfers_symbol_fkey; Type: FK CONSTRAINT; Schema: public; Owner: exchange
+--
+
+ALTER TABLE ONLY transfers
+    ADD CONSTRAINT transfers_symbol_fkey FOREIGN KEY (symbol) REFERENCES symbols(id) ON UPDATE RESTRICT ON DELETE RESTRICT;
+
+
+--
+-- Name: transfers_users_fkey; Type: FK CONSTRAINT; Schema: public; Owner: exchange
+--
+
+ALTER TABLE ONLY transfers
+    ADD CONSTRAINT transfers_users_fkey FOREIGN KEY (users) REFERENCES users(id) ON UPDATE RESTRICT ON DELETE RESTRICT;
 
 
 --
