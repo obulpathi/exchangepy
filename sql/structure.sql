@@ -4,10 +4,9 @@
 
 SET statement_timeout = 0;
 SET client_encoding = 'UTF8';
-SET standard_conforming_strings = off;
+SET standard_conforming_strings = on;
 SET check_function_bodies = false;
 SET client_min_messages = warning;
-SET escape_string_warning = off;
 
 SET search_path = public, pg_catalog;
 
@@ -76,7 +75,7 @@ DROP FUNCTION public.t_balance_acc();
 DROP FUNCTION public.symbol_update_bidask(v_symbol integer);
 DROP FUNCTION public.punish(v_order_id integer, v_amount numeric);
 DROP FUNCTION public.buying_power(v_users integer);
-DROP PROCEDURAL LANGUAGE plpgsql;
+DROP EXTENSION plpgsql;
 DROP SCHEMA public;
 --
 -- Name: public; Type: SCHEMA; Schema: -; Owner: postgres
@@ -95,13 +94,18 @@ COMMENT ON SCHEMA public IS 'standard public schema';
 
 
 --
--- Name: plpgsql; Type: PROCEDURAL LANGUAGE; Schema: -; Owner: exchange
+-- Name: plpgsql; Type: EXTENSION; Schema: -; Owner: 
 --
 
-CREATE PROCEDURAL LANGUAGE plpgsql;
+CREATE EXTENSION IF NOT EXISTS plpgsql WITH SCHEMA pg_catalog;
 
 
-ALTER PROCEDURAL LANGUAGE plpgsql OWNER TO exchange;
+--
+-- Name: EXTENSION plpgsql; Type: COMMENT; Schema: -; Owner: 
+--
+
+COMMENT ON EXTENSION plpgsql IS 'PL/pgSQL procedural language';
+
 
 SET search_path = public, pg_catalog;
 
@@ -682,8 +686,8 @@ COMMENT ON TABLE fees IS 'Misc fees';
 CREATE SEQUENCE fees_id_seq
     START WITH 1
     INCREMENT BY 1
-    NO MAXVALUE
     NO MINVALUE
+    NO MAXVALUE
     CACHE 1;
 
 
@@ -751,8 +755,8 @@ COMMENT ON TABLE orders_limit IS 'limit orders';
 CREATE SEQUENCE orders_id_seq
     START WITH 1
     INCREMENT BY 1
-    NO MAXVALUE
     NO MINVALUE
+    NO MAXVALUE
     CACHE 1;
 
 
@@ -797,8 +801,8 @@ COMMENT ON TABLE orders_stop IS 'stop orders - sl, tp, stop outs';
 CREATE SEQUENCE orders_stop_id_seq
     START WITH 1
     INCREMENT BY 1
-    NO MAXVALUE
     NO MINVALUE
+    NO MAXVALUE
     CACHE 1;
 
 
@@ -844,8 +848,8 @@ COMMENT ON TABLE symbols IS 'symbols for trade ';
 CREATE SEQUENCE symbols_id_seq
     START WITH 1
     INCREMENT BY 1
-    NO MAXVALUE
     NO MINVALUE
+    NO MAXVALUE
     CACHE 1;
 
 
@@ -952,8 +956,8 @@ COMMENT ON TABLE transfers_codes IS 'Codes';
 CREATE SEQUENCE transfers_id_seq
     START WITH 1
     INCREMENT BY 1
-    NO MAXVALUE
     NO MINVALUE
+    NO MAXVALUE
     CACHE 1;
 
 
@@ -995,8 +999,8 @@ COMMENT ON TABLE users IS 'user accounts';
 CREATE SEQUENCE users_id_seq
     START WITH 1
     INCREMENT BY 1
-    NO MAXVALUE
     NO MINVALUE
+    NO MAXVALUE
     CACHE 1;
 
 
@@ -1188,50 +1192,35 @@ CREATE INDEX i_users2 ON orders_stop USING btree (users);
 -- Name: t_balance; Type: TRIGGER; Schema: public; Owner: exchange
 --
 
-CREATE TRIGGER t_balance
-    AFTER INSERT ON users
-    FOR EACH ROW
-    EXECUTE PROCEDURE t_balance_acc();
+CREATE TRIGGER t_balance AFTER INSERT ON users FOR EACH ROW EXECUTE PROCEDURE t_balance_acc();
 
 
 --
 -- Name: t_fee_balance; Type: TRIGGER; Schema: public; Owner: exchange
 --
 
-CREATE TRIGGER t_fee_balance
-    AFTER INSERT ON fees
-    FOR EACH ROW
-    EXECUTE PROCEDURE t_fee_bal();
+CREATE TRIGGER t_fee_balance AFTER INSERT ON fees FOR EACH ROW EXECUTE PROCEDURE t_fee_bal();
 
 
 --
 -- Name: t_new_order; Type: TRIGGER; Schema: public; Owner: exchange
 --
 
-CREATE TRIGGER t_new_order
-    AFTER INSERT ON orders_limit
-    FOR EACH ROW
-    EXECUTE PROCEDURE t_order_match();
+CREATE TRIGGER t_new_order AFTER INSERT ON orders_limit FOR EACH ROW EXECUTE PROCEDURE t_order_match();
 
 
 --
 -- Name: t_upd_balance; Type: TRIGGER; Schema: public; Owner: exchange
 --
 
-CREATE TRIGGER t_upd_balance
-    AFTER UPDATE ON balances
-    FOR EACH ROW
-    EXECUTE PROCEDURE t_upd_balance();
+CREATE TRIGGER t_upd_balance AFTER UPDATE ON balances FOR EACH ROW EXECUTE PROCEDURE t_upd_balance();
 
 
 --
 -- Name: t_upd_stopout; Type: TRIGGER; Schema: public; Owner: exchange
 --
 
-CREATE TRIGGER t_upd_stopout
-    AFTER UPDATE ON symbols
-    FOR EACH ROW
-    EXECUTE PROCEDURE t_stopout();
+CREATE TRIGGER t_upd_stopout AFTER UPDATE ON symbols FOR EACH ROW EXECUTE PROCEDURE t_stopout();
 
 
 --
