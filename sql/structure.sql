@@ -620,7 +620,7 @@ CREATE FUNCTION t_upd_balance() RETURNS trigger
     LANGUAGE plpgsql
     AS $$
 BEGIN
-	PERFORM pg_notify('scout', TG_TABLE_NAME || ',' || NEW.user || ',' || NEW.symbol || ',' || NEW.balance);
+	PERFORM pg_notify('scout', TG_TABLE_NAME || ',' || NEW.users || ',' || NEW.symbol || ',' || NEW.balance);
 END;
 $$;
 
