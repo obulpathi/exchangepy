@@ -298,7 +298,7 @@ DECLARE
 	v_bp_his	numeric(12,2);
 BEGIN
 
-	PERFORM pg_notify('scout', TG_TABLE_NAME || ',' || NEW.user || ',' || NEW.id );
+	PERFORM pg_notify('scout', TG_TABLE_NAME || ',' || NEW.users || ',' || NEW.id );
 
 	IF NEW.buy_sell = TRUE THEN
 		OPEN c_orders FOR SELECT
@@ -625,6 +625,7 @@ CREATE FUNCTION t_upd_balance() RETURNS trigger
     AS $$
 BEGIN
 	PERFORM pg_notify('scout', TG_TABLE_NAME || ',' || NEW.users || ',' || NEW.symbol || ',' || NEW.balance);
+	RETURN NEW;
 END;
 $$;
 
