@@ -35,3 +35,4 @@ function handler(request, response)
 
 var exch = new exchange();
 exch.bind_socket_io_events(io);
+exch.bind_pg_watcher();
