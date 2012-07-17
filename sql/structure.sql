@@ -25,6 +25,7 @@ ALTER TABLE ONLY public.matched DROP CONSTRAINT matched_buy_fkey;
 ALTER TABLE ONLY public.balances DROP CONSTRAINT balances_user_fkey;
 ALTER TABLE ONLY public.balances DROP CONSTRAINT balances_symbol_fkey;
 DROP TRIGGER t_upd_stopout ON public.symbols;
+DROP TRIGGER t_upd_balance ON public.balances;
 DROP TRIGGER t_new_order ON public.orders_limit;
 DROP TRIGGER t_fee_balance ON public.fees;
 DROP TRIGGER t_balance ON public.users;
@@ -67,6 +68,7 @@ DROP TABLE public.matched;
 DROP SEQUENCE public.fees_id_seq;
 DROP TABLE public.fees;
 DROP TABLE public.balances;
+DROP FUNCTION public.t_upd_balance();
 DROP FUNCTION public.t_stopout();
 DROP FUNCTION public.t_order_match();
 DROP FUNCTION public.t_fee_bal();
@@ -292,6 +294,8 @@ DECLARE
 	v_bp_his	numeric(12,2);
 BEGIN
 
+	PERFORM pg_notify('scout', TG_TABLE_NAME || ',' || NEW.user || ',' || NEW.id );
+
 	IF NEW.buy_sell = TRUE THEN
 		OPEN c_orders FOR SELECT
 			*
@@ -455,6 +459,8 @@ BEGIN
 			INSERT INTO matched (buy, sell, amount ) VALUES ( v_order.id, NEW.id, v_effective );
 		END IF;
 
+		PERFORM pg_notify('scout', 'matched,' || NEW.symbol || ',' || v_order.price || ',' || v_effective);
+
 		-- Updating last trade for symbol
 
 		UPDATE
@@ -519,6 +525,8 @@ BEGIN
 	IF NEW.bid = OLD.bid AND NEW.ask = OLD.ask THEN
 		RETURN NEW;
 	END IF;
+
+	PERFORM pg_notify('scout', TG_TABLE_NAME || ',' || NEW.symbol || ',' || NEW.bid || ',' || NEW.ask);
 
 	-- Get pretenders
 
@@ -603,6 +611,21 @@ ALTER FUNCTION public.t_stopout() OWNER TO exchange;
 
 COMMENT ON FUNCTION t_stopout() IS 'Stop out';
 
+
+--
+-- Name: t_upd_balance(); Type: FUNCTION; Schema: public; Owner: exchange
+--
+
+CREATE FUNCTION t_upd_balance() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+BEGIN
+	PERFORM pg_notify('scout', TG_TABLE_NAME || ',' || NEW.user || ',' || NEW.symbol || ',' || NEW.balance);
+END;
+$$;
+
+
+ALTER FUNCTION public.t_upd_balance() OWNER TO exchange;
 
 SET default_tablespace = '';
 
@@ -1189,6 +1212,16 @@ CREATE TRIGGER t_new_order
     AFTER INSERT ON orders_limit
     FOR EACH ROW
     EXECUTE PROCEDURE t_order_match();
+
+
+--
+-- Name: t_upd_balance; Type: TRIGGER; Schema: public; Owner: exchange
+--
+
+CREATE TRIGGER t_upd_balance
+    AFTER UPDATE ON balances
+    FOR EACH ROW
+    EXECUTE PROCEDURE t_upd_balance();
 
 
 --
