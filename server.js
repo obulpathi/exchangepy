@@ -1,6 +1,5 @@
 var app = require('http').createServer(handler)
 	, io = require('socket.io').listen(app)
-	, path = require('path')
 	, exchange = require('./lib/exchange')
 	, fs = require('fs');
 
@@ -12,7 +11,7 @@ function handler(request, response)
 	if (filePath == './public/')
 		filePath = './public/index.html';
 
-	path.exists(filePath, function (exists)
+	fs.exists(filePath, function (exists)
 	{
 		if (exists) {
 			fs.readFile(filePath, function (error, content)
