@@ -231,6 +231,9 @@ BEGIN
                 ask = COALESCE(v_ask, 0)
         WHERE
                 id = v_symbol;
+
+	PERFORM pg_notify('scout', 'symbols,' || v_symbol || ',' || COALESCE(v_bid, 0) || ',' || COALESCE(v_ask, 0) );
+
 END;$$;
 
 
@@ -529,8 +532,6 @@ BEGIN
 	IF NEW.bid = OLD.bid AND NEW.ask = OLD.ask THEN
 		RETURN NEW;
 	END IF;
-
-	PERFORM pg_notify('scout', TG_TABLE_NAME || ',' || NEW.symbol || ',' || NEW.bid || ',' || NEW.ask);
 
 	-- Get pretenders
 
