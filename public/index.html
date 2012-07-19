@@ -20,6 +20,26 @@
 		socket.emit('login', { id : acc_id, timestamp : timestamp, hash : hash.toString(CryptoJS.enc.Hex)});
 	});
 
+	socket.on('balance', function(data){
+		console.log('Balance');
+		console.log(data);
+	});
+
+	socket.on('orders', function(data){
+		console.log('Order');
+		console.log(data);
+	});
+
+	socket.on('bidask', function(data){
+		console.log('Bidask');
+		console.log(data);
+	});
+
+	socket.on('matched', function(data){
+		console.log('matched');
+		console.log(data);
+	});
+
 	socket.on('loggedin', function (data)
 	{
 		var payload = {
@@ -41,4 +61,6 @@
 			payload   : payload
 		});
 	});
+
+
 </script>
