@@ -11,10 +11,12 @@ SET client_min_messages = warning;
 SET search_path = public, pg_catalog;
 
 ALTER TABLE ONLY public.users DROP CONSTRAINT users_currency_fkey;
+ALTER TABLE ONLY public.users_btc DROP CONSTRAINT users_btc_users_fkey;
 ALTER TABLE ONLY public.transfers DROP CONSTRAINT transfers_users_fkey;
 ALTER TABLE ONLY public.transfers DROP CONSTRAINT transfers_symbol_fkey;
 ALTER TABLE ONLY public.transfers_codes DROP CONSTRAINT transfers_codes_id_fkey;
 ALTER TABLE ONLY public.transfers_btc DROP CONSTRAINT transfers_btc_id_fkey;
+ALTER TABLE ONLY public.transfers_btc DROP CONSTRAINT transfers_btc_address_fkey;
 ALTER TABLE ONLY public.orders_stop DROP CONSTRAINT orders_stop_users_fkey;
 ALTER TABLE ONLY public.orders_stop DROP CONSTRAINT orders_stop_symbol_fkey;
 ALTER TABLE ONLY public.orders_limit DROP CONSTRAINT orders_limit_users_fkey;
@@ -26,6 +28,7 @@ ALTER TABLE ONLY public.balances DROP CONSTRAINT balances_symbol_fkey;
 DROP TRIGGER t_upd_stopout ON public.symbols;
 DROP TRIGGER t_upd_balance ON public.balances;
 DROP TRIGGER t_new_order ON public.orders_limit;
+DROP TRIGGER t_new_addr ON public.users_btc;
 DROP TRIGGER t_fee_balance ON public.fees;
 DROP TRIGGER t_balance ON public.users;
 DROP INDEX public.i_users2;
@@ -33,6 +36,7 @@ DROP INDEX public.i_users;
 DROP INDEX public.i_ol_dt;
 ALTER TABLE ONLY public.users DROP CONSTRAINT users_pkey;
 ALTER TABLE ONLY public.users DROP CONSTRAINT users_email_key;
+ALTER TABLE ONLY public.users_btc DROP CONSTRAINT users_btc_pkey;
 ALTER TABLE ONLY public.transfers DROP CONSTRAINT transfers_pkey;
 ALTER TABLE ONLY public.transfers_codes DROP CONSTRAINT transfers_codes_id_key;
 ALTER TABLE ONLY public.transfers_codes DROP CONSTRAINT transfers_codes_code_key;
@@ -45,6 +49,7 @@ ALTER TABLE ONLY public.orders_limit DROP CONSTRAINT orders_id_key;
 ALTER TABLE ONLY public.matched DROP CONSTRAINT matched_buy_sell_key;
 ALTER TABLE ONLY public.fees DROP CONSTRAINT fees_pkey;
 ALTER TABLE ONLY public.balances DROP CONSTRAINT balances_user_symbol_key;
+ALTER TABLE public.users_btc ALTER COLUMN id DROP DEFAULT;
 ALTER TABLE public.users ALTER COLUMN id DROP DEFAULT;
 ALTER TABLE public.transfers ALTER COLUMN id DROP DEFAULT;
 ALTER TABLE public.symbols ALTER COLUMN id DROP DEFAULT;
@@ -52,6 +57,8 @@ ALTER TABLE public.orders_stop ALTER COLUMN id DROP DEFAULT;
 ALTER TABLE public.orders_limit ALTER COLUMN id DROP DEFAULT;
 ALTER TABLE public.fees ALTER COLUMN id DROP DEFAULT;
 DROP SEQUENCE public.users_id_seq;
+DROP SEQUENCE public.users_btc_id_seq;
+DROP TABLE public.users_btc;
 DROP TABLE public.users;
 DROP SEQUENCE public.transfers_id_seq;
 DROP TABLE public.transfers_codes;
@@ -67,6 +74,7 @@ DROP TABLE public.matched;
 DROP SEQUENCE public.fees_id_seq;
 DROP TABLE public.fees;
 DROP TABLE public.balances;
+DROP FUNCTION public.t_usr_btc_new();
 DROP FUNCTION public.t_upd_balance();
 DROP FUNCTION public.t_stopout();
 DROP FUNCTION public.t_order_match();
@@ -633,6 +641,22 @@ $$;
 
 ALTER FUNCTION public.t_upd_balance() OWNER TO exchange;
 
+--
+-- Name: t_usr_btc_new(); Type: FUNCTION; Schema: public; Owner: exchange
+--
+
+CREATE FUNCTION t_usr_btc_new() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+BEGIN
+	NEW.dt = NOW();
+	RETURN NEW;
+END;
+$$;
+
+
+ALTER FUNCTION public.t_usr_btc_new() OWNER TO exchange;
+
 SET default_tablespace = '';
 
 SET default_with_oids = false;
@@ -897,8 +921,8 @@ COMMENT ON TABLE transfers IS 'In/out transfers';
 CREATE TABLE transfers_btc (
     id integer NOT NULL,
     trans character varying(52) NOT NULL,
-    address character varying(34) NOT NULL,
-    conf smallint NOT NULL
+    conf smallint NOT NULL,
+    address integer NOT NULL
 );
 
 
@@ -916,13 +940,6 @@ COMMENT ON TABLE transfers_btc IS 'BTC transfers';
 --
 
 COMMENT ON COLUMN transfers_btc.trans IS 'Bitcoin transaction id';
-
-
---
--- Name: COLUMN transfers_btc.address; Type: COMMENT; Schema: public; Owner: exchange
---
-
-COMMENT ON COLUMN transfers_btc.address IS 'Bitcoin address';
 
 
 --
@@ -995,6 +1012,55 @@ COMMENT ON TABLE users IS 'user accounts';
 
 
 --
+-- Name: users_btc; Type: TABLE; Schema: public; Owner: exchange; Tablespace: 
+--
+
+CREATE TABLE users_btc (
+    id integer NOT NULL,
+    address character varying(34) NOT NULL,
+    users integer NOT NULL,
+    dt timestamp without time zone NOT NULL
+);
+
+
+ALTER TABLE public.users_btc OWNER TO exchange;
+
+--
+-- Name: TABLE users_btc; Type: COMMENT; Schema: public; Owner: exchange
+--
+
+COMMENT ON TABLE users_btc IS 'Addresses of users';
+
+
+--
+-- Name: COLUMN users_btc.address; Type: COMMENT; Schema: public; Owner: exchange
+--
+
+COMMENT ON COLUMN users_btc.address IS 'Bitcoin Address';
+
+
+--
+-- Name: users_btc_id_seq; Type: SEQUENCE; Schema: public; Owner: exchange
+--
+
+CREATE SEQUENCE users_btc_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+ALTER TABLE public.users_btc_id_seq OWNER TO exchange;
+
+--
+-- Name: users_btc_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: exchange
+--
+
+ALTER SEQUENCE users_btc_id_seq OWNED BY users_btc.id;
+
+
+--
 -- Name: users_id_seq; Type: SEQUENCE; Schema: public; Owner: exchange
 --
 
@@ -1055,6 +1121,13 @@ ALTER TABLE ONLY transfers ALTER COLUMN id SET DEFAULT nextval('transfers_id_seq
 --
 
 ALTER TABLE ONLY users ALTER COLUMN id SET DEFAULT nextval('users_id_seq'::regclass);
+
+
+--
+-- Name: id; Type: DEFAULT; Schema: public; Owner: exchange
+--
+
+ALTER TABLE ONLY users_btc ALTER COLUMN id SET DEFAULT nextval('users_btc_id_seq'::regclass);
 
 
 --
@@ -1154,6 +1227,14 @@ ALTER TABLE ONLY transfers
 
 
 --
+-- Name: users_btc_pkey; Type: CONSTRAINT; Schema: public; Owner: exchange; Tablespace: 
+--
+
+ALTER TABLE ONLY users_btc
+    ADD CONSTRAINT users_btc_pkey PRIMARY KEY (id);
+
+
+--
 -- Name: users_email_key; Type: CONSTRAINT; Schema: public; Owner: exchange; Tablespace: 
 --
 
@@ -1202,6 +1283,13 @@ CREATE TRIGGER t_balance AFTER INSERT ON users FOR EACH ROW EXECUTE PROCEDURE t_
 --
 
 CREATE TRIGGER t_fee_balance AFTER INSERT ON fees FOR EACH ROW EXECUTE PROCEDURE t_fee_bal();
+
+
+--
+-- Name: t_new_addr; Type: TRIGGER; Schema: public; Owner: exchange
+--
+
+CREATE TRIGGER t_new_addr BEFORE INSERT ON users_btc FOR EACH ROW EXECUTE PROCEDURE t_usr_btc_new();
 
 
 --
@@ -1290,6 +1378,14 @@ ALTER TABLE ONLY orders_stop
 
 
 --
+-- Name: transfers_btc_address_fkey; Type: FK CONSTRAINT; Schema: public; Owner: exchange
+--
+
+ALTER TABLE ONLY transfers_btc
+    ADD CONSTRAINT transfers_btc_address_fkey FOREIGN KEY (address) REFERENCES users_btc(id) ON UPDATE RESTRICT ON DELETE RESTRICT;
+
+
+--
 -- Name: transfers_btc_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: exchange
 --
 
@@ -1319,6 +1415,14 @@ ALTER TABLE ONLY transfers
 
 ALTER TABLE ONLY transfers
     ADD CONSTRAINT transfers_users_fkey FOREIGN KEY (users) REFERENCES users(id) ON UPDATE RESTRICT ON DELETE RESTRICT;
+
+
+--
+-- Name: users_btc_users_fkey; Type: FK CONSTRAINT; Schema: public; Owner: exchange
+--
+
+ALTER TABLE ONLY users_btc
+    ADD CONSTRAINT users_btc_users_fkey FOREIGN KEY (users) REFERENCES users(id) ON UPDATE RESTRICT ON DELETE RESTRICT;
 
 
 --
