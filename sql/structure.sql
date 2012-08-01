@@ -83,6 +83,7 @@ DROP FUNCTION public.t_balance_acc();
 DROP FUNCTION public.symbol_update_bidask(v_symbol integer);
 DROP FUNCTION public.punish(v_order_id integer, v_amount numeric);
 DROP FUNCTION public.buying_power(v_users integer);
+DROP FUNCTION public.btc_deposit(v_trans_id character varying, v_address character varying, v_amount numeric);
 DROP EXTENSION plpgsql;
 DROP SCHEMA public;
 --
@@ -116,6 +117,84 @@ COMMENT ON EXTENSION plpgsql IS 'PL/pgSQL procedural language';
 
 
 SET search_path = public, pg_catalog;
+
+--
+-- Name: btc_deposit(character varying, character varying, numeric); Type: FUNCTION; Schema: public; Owner: exchange
+--
+
+CREATE FUNCTION btc_deposit(v_trans_id character varying, v_address character varying, v_amount numeric) RETURNS character varying
+    LANGUAGE plpgsql
+    AS $$
+DECLARE
+	v_transfer_id	integer;
+	v_address_id	integer;
+BEGIN
+
+	SELECT
+		id
+	INTO
+		v_address_id
+	FROM
+		users_btc
+	WHERE
+		address = v_address;
+
+	IF NOT FOUND THEN
+		RETURN 'unknown address';
+	END IF;
+
+	-- Checking if already inserted
+
+	PERFORM
+		id
+	FROM
+		transfers_btc
+	WHERE
+		trans = v_trans_id;
+
+	IF FOUND THEN
+		RETURN 'transaction exits';
+	END IF;
+
+	-- Inserting transfer record
+
+	INSERT INTO
+		transfers(
+			dt,
+			users,
+			in_out,
+			symbol,
+			amount,
+			status
+		)
+	VALUES(
+		now(),
+		(SELECT users FROM users_btc WHERE address = v_address),
+		TRUE,
+		1,
+		v_amount,
+		'progress'
+	) RETURNING id INTO v_transfer_id;
+
+	-- Inserting transaction record
+
+	INSERT INTO
+		transfers_btc( id, trans, address )
+	VALUES ( v_transfer_id, v_trans_id, v_address_id);
+
+	RETURN 'inserted';
+END;
+$$;
+
+
+ALTER FUNCTION public.btc_deposit(v_trans_id character varying, v_address character varying, v_amount numeric) OWNER TO exchange;
+
+--
+-- Name: FUNCTION btc_deposit(v_trans_id character varying, v_address character varying, v_amount numeric); Type: COMMENT; Schema: public; Owner: exchange
+--
+
+COMMENT ON FUNCTION btc_deposit(v_trans_id character varying, v_address character varying, v_amount numeric) IS 'Affecting transfers and transfers_btc';
+
 
 --
 -- Name: buying_power(integer); Type: FUNCTION; Schema: public; Owner: exchange
@@ -899,7 +978,7 @@ CREATE TABLE transfers (
     in_out boolean NOT NULL,
     symbol smallint NOT NULL,
     amount numeric(14,4) NOT NULL,
-    balance numeric(14,4) NOT NULL,
+    balance numeric(14,4),
     status character varying DEFAULT 'in progress'::character varying NOT NULL,
     dt_status timestamp without time zone
 );
@@ -919,9 +998,9 @@ COMMENT ON TABLE transfers IS 'In/out transfers';
 --
 
 CREATE TABLE transfers_btc (
-    id integer NOT NULL,
+    id integer,
     trans character varying(52) NOT NULL,
-    conf smallint NOT NULL,
+    conf smallint DEFAULT 0 NOT NULL,
     address integer NOT NULL
 );
 
