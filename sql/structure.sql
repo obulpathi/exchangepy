@@ -27,6 +27,7 @@ ALTER TABLE ONLY public.balances DROP CONSTRAINT balances_user_fkey;
 ALTER TABLE ONLY public.balances DROP CONSTRAINT balances_symbol_fkey;
 DROP TRIGGER t_upd_stopout ON public.symbols;
 DROP TRIGGER t_upd_balance ON public.balances;
+DROP TRIGGER t_trans_btc ON public.transfers_btc;
 DROP TRIGGER t_new_order ON public.orders_limit;
 DROP TRIGGER t_new_addr ON public.users_btc;
 DROP TRIGGER t_fee_balance ON public.fees;
@@ -83,6 +84,7 @@ DROP FUNCTION public.t_balance_acc();
 DROP FUNCTION public.symbol_update_bidask(v_symbol integer);
 DROP FUNCTION public.punish(v_order_id integer, v_amount numeric);
 DROP FUNCTION public.buying_power(v_users integer);
+DROP FUNCTION public.btc_trans_conf();
 DROP FUNCTION public.btc_deposit(v_trans_id character varying, v_address character varying, v_amount numeric);
 DROP EXTENSION plpgsql;
 DROP SCHEMA public;
@@ -194,6 +196,81 @@ ALTER FUNCTION public.btc_deposit(v_trans_id character varying, v_address charac
 --
 
 COMMENT ON FUNCTION btc_deposit(v_trans_id character varying, v_address character varying, v_amount numeric) IS 'Affecting transfers and transfers_btc';
+
+
+--
+-- Name: btc_trans_conf(); Type: FUNCTION; Schema: public; Owner: exchange
+--
+
+CREATE FUNCTION btc_trans_conf() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+DECLARE
+	v_transfer_id	integer;
+	v_amount	numeric;
+	v_users		integer;
+BEGIN
+
+	IF ( NEW.conf >= 6 ) THEN
+
+		-- Checking if already processed
+
+		SELECT
+			id, users, amount
+		INTO
+			v_transfer_id, v_users, v_amount
+		FROM
+			transfers
+		WHERE
+			id = OLD.id
+			AND status = 'progress';
+
+		IF NOT FOUND THEN
+			RETURN NEW;
+		END IF;
+
+		-- Writing old balance
+
+		UPDATE
+			transfers as t
+		SET
+			balance = (
+				SELECT
+					balance
+				FROM
+					balances
+				WHERE
+					symbol = 1
+					AND users = t.users
+			),
+			status = 'processed',
+			dt_status = now()
+		WHERE
+			id = OLD.id;
+
+		-- Credit transfer amount to balance
+
+		UPDATE
+			balances
+		SET
+			balance = balance + v_amount
+		WHERE
+			symbol = 1
+			AND users = v_users;
+	END IF;
+
+	RETURN NEW;
+END;
+$$;
+
+
+ALTER FUNCTION public.btc_trans_conf() OWNER TO exchange;
+
+--
+-- Name: FUNCTION btc_trans_conf(); Type: COMMENT; Schema: public; Owner: exchange
+--
+
+COMMENT ON FUNCTION btc_trans_conf() IS 'Bitcoin transactions confirmation logic';
 
 
 --
@@ -999,7 +1076,7 @@ COMMENT ON TABLE transfers IS 'In/out transfers';
 
 CREATE TABLE transfers_btc (
     id integer,
-    trans character varying(52) NOT NULL,
+    trans character varying(64) NOT NULL,
     conf smallint DEFAULT 0 NOT NULL,
     address integer NOT NULL
 );
@@ -1376,6 +1453,13 @@ CREATE TRIGGER t_new_addr BEFORE INSERT ON users_btc FOR EACH ROW EXECUTE PROCED
 --
 
 CREATE TRIGGER t_new_order AFTER INSERT ON orders_limit FOR EACH ROW EXECUTE PROCEDURE t_order_match();
+
+
+--
+-- Name: t_trans_btc; Type: TRIGGER; Schema: public; Owner: exchange
+--
+
+CREATE TRIGGER t_trans_btc AFTER UPDATE ON transfers_btc FOR EACH ROW EXECUTE PROCEDURE btc_trans_conf();
 
 
 --
