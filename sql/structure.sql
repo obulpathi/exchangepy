@@ -83,6 +83,7 @@ DROP FUNCTION public.t_fee_bal();
 DROP FUNCTION public.t_balance_acc();
 DROP FUNCTION public.symbol_update_bidask(v_symbol integer);
 DROP FUNCTION public.punish(v_order_id integer, v_amount numeric);
+DROP FUNCTION public.issue_code(v_users integer, v_symbol integer, v_amount numeric, v_code character varying);
 DROP FUNCTION public.buying_power(v_users integer);
 DROP FUNCTION public.btc_trans_conf();
 DROP FUNCTION public.btc_deposit(v_trans_id character varying, v_address character varying, v_amount numeric);
@@ -304,6 +305,111 @@ END;$$;
 
 
 ALTER FUNCTION public.buying_power(v_users integer) OWNER TO exchange;
+
+--
+-- Name: issue_code(integer, integer, numeric, character varying); Type: FUNCTION; Schema: public; Owner: exchange
+--
+
+CREATE FUNCTION issue_code(v_users integer, v_symbol integer, v_amount numeric, v_code character varying) RETURNS boolean
+    LANGUAGE plpgsql
+    AS $$
+DECLARE
+	v_transfer_id	integer;
+BEGIN
+	-- Checking if enough money on balance
+
+	PERFORM	* FROM
+		balances
+	WHERE
+		users = v_users
+		AND symbol = v_symbol
+		AND balance - v_amount >= 0;
+
+	IF NOT FOUND THEN
+		RETURN FALSE;
+	END IF;
+
+	-- Making codes - transfer record
+
+	INSERT INTO
+		transfers(
+			dt,
+			users,
+			in_out,
+			symbol,
+			amount,
+			status
+		)
+	VALUES(
+		now(),
+		v_users,
+		FALSE,
+		v_symbol,
+		v_amount,
+		'issued'
+	) RETURNING id INTO v_transfer_id;
+
+	-- Making codes - code record
+
+	INSERT INTO
+		transfers_codes(id, code)
+	VALUES( v_transfer_id, v_code);
+
+	-- Updating prior balance
+
+	UPDATE
+		transfers
+	SET
+		balance = (
+			SELECT
+				balance
+			FROM
+				balances
+			WHERE
+				users = v_users
+				AND symbol = v_symbol
+		)
+	WHERE
+		id = v_transfer_id;
+
+	-- Debit from balance
+
+	UPDATE
+		balances
+	SET
+		balance = balance - v_amount
+	WHERE
+		users = v_users
+		AND symbol = v_symbol;
+
+	-- Debit fee
+
+	UPDATE
+		balances
+	SET
+		balance = balance - 0.01
+	WHERE
+		users = v_users
+		AND symbol = 1;
+
+	-- Recodring fee
+
+	INSERT INTO
+		fees(id, dt, users, amount, fee_type )
+	VALUES (
+		nextval('fees_id_seq'::regclass),
+		now(),
+		v_users,
+		0.01,
+		'code'
+	);
+
+	RETURN TRUE;
+END;
+$$;
+
+
+ALTER FUNCTION public.issue_code(v_users integer, v_symbol integer, v_amount numeric, v_code character varying) OWNER TO exchange;
 
 --
 -- Name: punish(integer, numeric); Type: FUNCTION; Schema: public; Owner: exchange
