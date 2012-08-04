@@ -15,6 +15,7 @@ ALTER TABLE ONLY public.users_btc DROP CONSTRAINT users_btc_users_fkey;
 ALTER TABLE ONLY public.transfers DROP CONSTRAINT transfers_users_fkey;
 ALTER TABLE ONLY public.transfers DROP CONSTRAINT transfers_symbol_fkey;
 ALTER TABLE ONLY public.transfers_codes DROP CONSTRAINT transfers_codes_id_fkey;
+ALTER TABLE ONLY public.transfers_codes DROP CONSTRAINT transfers_codes_deposit_id_fkey;
 ALTER TABLE ONLY public.transfers_btc DROP CONSTRAINT transfers_btc_id_fkey;
 ALTER TABLE ONLY public.transfers_btc DROP CONSTRAINT transfers_btc_address_fkey;
 ALTER TABLE ONLY public.orders_stop DROP CONSTRAINT orders_stop_users_fkey;
@@ -40,6 +41,7 @@ ALTER TABLE ONLY public.users DROP CONSTRAINT users_email_key;
 ALTER TABLE ONLY public.users_btc DROP CONSTRAINT users_btc_pkey;
 ALTER TABLE ONLY public.transfers DROP CONSTRAINT transfers_pkey;
 ALTER TABLE ONLY public.transfers_codes DROP CONSTRAINT transfers_codes_id_key;
+ALTER TABLE ONLY public.transfers_codes DROP CONSTRAINT transfers_codes_deposit_id_key;
 ALTER TABLE ONLY public.transfers_codes DROP CONSTRAINT transfers_codes_code_key;
 ALTER TABLE ONLY public.transfers_btc DROP CONSTRAINT transfers_btc_trans_key;
 ALTER TABLE ONLY public.transfers_btc DROP CONSTRAINT transfers_btc_id_key;
@@ -84,6 +86,7 @@ DROP FUNCTION public.t_balance_acc();
 DROP FUNCTION public.symbol_update_bidask(v_symbol integer);
 DROP FUNCTION public.punish(v_order_id integer, v_amount numeric);
 DROP FUNCTION public.issue_code(v_users integer, v_symbol integer, v_amount numeric, v_code character varying);
+DROP FUNCTION public.deposit_code(v_users integer, v_code character varying);
 DROP FUNCTION public.buying_power(v_users integer);
 DROP FUNCTION public.btc_trans_conf();
 DROP FUNCTION public.btc_deposit(v_trans_id character varying, v_address character varying, v_amount numeric);
@@ -307,6 +310,123 @@ END;$$;
 ALTER FUNCTION public.buying_power(v_users integer) OWNER TO exchange;
 
 --
+-- Name: deposit_code(integer, character varying); Type: FUNCTION; Schema: public; Owner: exchange
+--
+
+CREATE FUNCTION deposit_code(v_users integer, v_code character varying) RETURNS boolean
+    LANGUAGE plpgsql
+    AS $$
+DECLARE
+	v_deposit_id	integer;
+	v_issue_id	integer;
+	v_symbol	integer;
+	v_amount	numeric;
+BEGIN
+
+	SELECT
+		t.id, t.symbol, t.amount
+	INTO
+		v_issue_id, v_symbol, v_amount
+	FROM
+		transfers_codes as c
+		LEFT JOIN transfers as t ON t.id = c.id
+	WHERE
+		c.code = v_code
+		AND c.deposit_id IS NULL
+		AND t.status = 'issued';
+
+	IF NOT FOUND THEN
+		RETURN FALSE;
+	END IF;
+
+	-- Processing code - transfer record
+
+	INSERT INTO
+		transfers(
+			dt,
+			users,
+			in_out,
+			symbol,
+			amount,
+			status,
+			dt_status
+		)
+	VALUES(
+		now(),
+		v_users,
+		TRUE,
+		v_symbol,
+		v_amount,
+		'deposited',
+		now()
+	) RETURNING id INTO v_deposit_id;
+
+	-- Processing code - updating code depositor
+
+	UPDATE
+		transfers_codes
+	SET
+		deposit_id = v_deposit_id
+	WHERE
+		id = v_issue_id;
+
+	-- Processing code - updating issue transfer
+
+	UPDATE
+		transfers
+	SET
+		status = 'deposited',
+		dt_status = now()
+	WHERE
+		id = v_issue_id;
+
+	-- Credit balance
+
+	UPDATE
+		balances
+	SET
+		balance = balance + v_amount
+	WHERE
+		users = v_users
+		AND symbol = v_symbol;
+
+	-- Debit fee
+
+	UPDATE
+		balances
+	SET
+		balance = balance - 0.01
+	WHERE
+		users = v_users
+		AND symbol = 1;
+
+	-- Recodring fee
+
+	INSERT INTO
+		fees(id, dt, users, amount, fee_type )
+	VALUES (
+		nextval('fees_id_seq'::regclass),
+		now(),
+		v_users,
+		0.01,
+		'code'
+	);
+
+	RETURN TRUE;
+END;
+$$;
+
+
+ALTER FUNCTION public.deposit_code(v_users integer, v_code character varying) OWNER TO exchange;
+
+--
+-- Name: FUNCTION deposit_code(v_users integer, v_code character varying); Type: COMMENT; Schema: public; Owner: exchange
+--
+
+COMMENT ON FUNCTION deposit_code(v_users integer, v_code character varying) IS 'Depositing existing code';
+
+
+--
 -- Name: issue_code(integer, integer, numeric, character varying); Type: FUNCTION; Schema: public; Owner: exchange
 --
 
@@ -381,28 +501,6 @@ BEGIN
 	WHERE
 		users = v_users
 		AND symbol = v_symbol;
-
-	-- Debit fee
-
-	UPDATE
-		balances
-	SET
-		balance = balance - 0.01
-	WHERE
-		users = v_users
-		AND symbol = 1;
-
-	-- Recodring fee
-
-	INSERT INTO
-		fees(id, dt, users, amount, fee_type )
-	VALUES (
-		nextval('fees_id_seq'::regclass),
-		now(),
-		v_users,
-		0.01,
-		'code'
-	);
 
 	RETURN TRUE;
 END;
@@ -1217,7 +1315,8 @@ COMMENT ON COLUMN transfers_btc.conf IS 'Confirmations';
 
 CREATE TABLE transfers_codes (
     id integer NOT NULL,
-    code character varying(52) NOT NULL
+    code character varying(52) NOT NULL,
+    deposit_id integer
 );
 
 
@@ -1228,6 +1327,13 @@ ALTER TABLE public.transfers_codes OWNER TO exchange;
 --
 
 COMMENT ON TABLE transfers_codes IS 'Codes';
+
+
+--
+-- Name: COLUMN transfers_codes.deposit_id; Type: COMMENT; Schema: public; Owner: exchange
+--
+
+COMMENT ON COLUMN transfers_codes.deposit_id IS 'Deposit transfer id of the code';
 
 
 --
@@ -1473,6 +1579,14 @@ ALTER TABLE ONLY transfers_codes
 
 
 --
+-- Name: transfers_codes_deposit_id_key; Type: CONSTRAINT; Schema: public; Owner: exchange; Tablespace: 
+--
+
+ALTER TABLE ONLY transfers_codes
+    ADD CONSTRAINT transfers_codes_deposit_id_key UNIQUE (deposit_id);
+
+
+--
 -- Name: transfers_codes_id_key; Type: CONSTRAINT; Schema: public; Owner: exchange; Tablespace: 
 --
 
@@ -1660,6 +1774,14 @@ ALTER TABLE ONLY transfers_btc
 
 ALTER TABLE ONLY transfers_btc
     ADD CONSTRAINT transfers_btc_id_fkey FOREIGN KEY (id) REFERENCES transfers(id) ON UPDATE RESTRICT ON DELETE RESTRICT;
+
+
+--
+-- Name: transfers_codes_deposit_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: exchange
+--
+
+ALTER TABLE ONLY transfers_codes
+    ADD CONSTRAINT transfers_codes_deposit_id_fkey FOREIGN KEY (deposit_id) REFERENCES transfers(id);
 
 
 --
