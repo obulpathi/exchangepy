@@ -26,7 +26,6 @@
 
 	function trans_parse_json($json_data)
 	{
-
 		if (!$json_data) {
 			throw new Exception(date('Y-m-d h:i:s') . " No response from bitcoind");
 		}
@@ -37,31 +36,48 @@
 			throw new Exception(date('Y-m-d h:i:s') . " JSON parsing failed - check bitcoind");
 		}
 
-//		$tx['amount']  = $json['amount'];
-//		$tx['tx_id']   = $json['tx_id'];
-//		$tx['address'] = $json['address'];
+		if (!isset($json[0]) || $json[0]->category != 'receive') return false;
 
-		$tx['amount']  = rand(0, 1000) / 100;
-		$tx['tx_id']   = rand(0, 100000);
-		$tx['address'] = '1QGTBN8pkxCT4iNUScxe9SXNELFyT15s2o';
+		$tx['amount']  = $json[0]->amount;
+		$tx['tx_id']   = $json[0]->txid;
+		$tx['address'] = $json[0]->address;
 
 		return $tx;
 	}
 
 	// Go
 
-	$i = 0;
+	$i                     = 0;
+	$n_already_imported_tx = 0;
+	$exit_now              = false;
 
 	do {
 		$trans = `bitcoind listtransactions "*" 1 $i`;
 
 		$parsed = trans_parse_json($trans);
 
-		$prepared_btc_deposit->bindParam(':tx_id', $parsed['tx_id'], PDO::PARAM_STR, 52);
-		$prepared_btc_deposit->bindParam(':address', $parsed['address'], PDO::PARAM_STR, 52);
-		$prepared_btc_deposit->bindParam(':amount', $parsed['amount'], PDO::PARAM_STR, 52);
+		if ($parsed) {
 
-		$prepared_btc_deposit->execute();
+			$prepared_btc_deposit->bindParam(':tx_id', $parsed['tx_id'], PDO::PARAM_STR, 64);
+			$prepared_btc_deposit->bindParam(':address', $parsed['address'], PDO::PARAM_STR, 52);
+			$prepared_btc_deposit->bindParam(':amount', $parsed['amount'], PDO::PARAM_STR, 52);
+
+			$prepared_btc_deposit->execute();
+
+			$res = $prepared_btc_deposit->fetch();
+
+			switch ($res[0]) {
+				case 'unknown address':
+					throw new Exception(date('Y-m-d h:i:s') . " Unknown address in bitcoind");
+					break;
+				case 'transaction exits':
+					$n_already_imported_tx++;
+					break;
+			}
+		} else {
+			$exit_now = true;
+		}
 
 		$i++;
-	} while ($i < 30);
+
+	} while ($n_already_imported_tx < 10 && $exit_now == false);
