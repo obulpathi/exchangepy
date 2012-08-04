@@ -380,6 +380,23 @@ BEGIN
 	WHERE
 		id = v_issue_id;
 
+	-- Updating prior balance
+
+	UPDATE
+		transfers
+	SET
+		balance = (
+			SELECT
+				balance
+			FROM
+				balances
+			WHERE
+				users = v_users
+				AND symbol = v_symbol
+		)
+	WHERE
+		id = v_deposit_id;
+
 	-- Credit balance
 
 	UPDATE
