@@ -283,27 +283,20 @@ COMMENT ON FUNCTION btc_trans_conf() IS 'Bitcoin transactions confirmation logic
 
 CREATE FUNCTION buying_power(v_users integer) RETURNS numeric
     LANGUAGE plpgsql
-    AS $$BEGIN
-RETURN 	2 * SUM( CASE
-		WHEN b.balance > 0 AND s.bid = 0 THEN
-			0
-		WHEN b.balance > 0 AND s.bid < 1 THEN
-			b.balance * s.bid
-		WHEN b.balance > 0 AND s.bid >= 1 THEN
-			b.balance / s.bid
-		WHEN b.balance < 0 AND s.ask = 0 THEN
-			b.balance * 999999999
-		WHEN b.balance < 0 AND s.ask < 1 THEN
-			b.balance * s.ask
-		WHEN b.balance < 0 AND s.ask >= 1 THEN
-			b.balance / s.ask
-	END ) as power
-FROM
-	balances as b
-	LEFT JOIN symbols as s ON b.symbol = s.id
-WHERE
-	users = v_users
-	AND balance != 0;
+    AS $$
+BEGIN
+	RETURN SUM( CASE
+			WHEN b.balance > 0 THEN
+				s.leverage * b.balance * s.bid
+			WHEN b.balance < 0 THEN
+				b.balance * s.ask
+		END ) as power
+	FROM
+		balances as b
+		LEFT JOIN symbols as s ON b.symbol = s.id
+	WHERE
+		users = v_users
+		AND balance != 0;
 END;$$;
 
 
@@ -636,9 +629,7 @@ CREATE FUNCTION t_balance_acc() RETURNS trigger
 	SELECT
 		NEW.id, id,0
 	FROM
-		symbols
-	WHERE
-		is_currency = TRUE;
+		symbols;
 
 	RETURN NEW;
 END
@@ -680,10 +671,11 @@ CREATE FUNCTION t_order_match() RETURNS trigger
 DECLARE
 	c_orders	refcursor;
 	v_order		record;
-	v_unfilled	numeric(8,4);
-	v_effective	numeric(12,2);
-	v_bp_my		numeric(12,2);
-	v_bp_his	numeric(12,2);
+	v_unfilled	numeric(8,2);
+	v_effective     numeric(8,2);
+	v_bp_my         numeric(12,2);
+	v_bp_his        numeric(12,2);
+
 BEGIN
 
 	PERFORM pg_notify('scout', TG_TABLE_NAME || ',' || NEW.users || ',' || NEW.id );
@@ -1045,7 +1037,7 @@ SET default_with_oids = false;
 CREATE TABLE balances (
     users integer NOT NULL,
     symbol smallint NOT NULL,
-    balance numeric(14,4) NOT NULL
+    balance numeric(14,3) NOT NULL
 );
 
 
@@ -1066,7 +1058,7 @@ CREATE TABLE fees (
     id integer NOT NULL,
     dt timestamp without time zone NOT NULL,
     users integer NOT NULL,
-    amount integer NOT NULL,
+    amount numeric(8,3) NOT NULL,
     fee_type character varying(10) NOT NULL,
     order_id integer,
     descr text
@@ -1134,7 +1126,7 @@ CREATE TABLE orders_limit (
     dt timestamp without time zone NOT NULL,
     exp_dt timestamp without time zone,
     buy_sell boolean NOT NULL,
-    price integer NOT NULL,
+    price numeric(9,5) NOT NULL,
     amount numeric(8,2) NOT NULL,
     unfilled numeric(8,2) NOT NULL,
     status character varying(10) NOT NULL,
@@ -1182,7 +1174,7 @@ CREATE TABLE orders_stop (
     users integer NOT NULL,
     dt timestamp without time zone NOT NULL,
     buy_sell boolean NOT NULL,
-    price integer NOT NULL,
+    price numeric(9,5) NOT NULL,
     amount numeric(8,2) NOT NULL,
     type character varying(10) NOT NULL
 );
@@ -1226,11 +1218,11 @@ CREATE TABLE symbols (
     id smallint NOT NULL,
     symbol character(3) NOT NULL,
     descr character varying NOT NULL,
-    bid integer NOT NULL,
-    ask integer NOT NULL,
-    last_price integer NOT NULL,
+    bid numeric(9,5) NOT NULL,
+    ask numeric(9,5) NOT NULL,
+    last_price numeric(9,5) NOT NULL,
     last_dt timestamp without time zone,
-    leverage integer DEFAULT 1 NOT NULL
+    leverage smallint DEFAULT 1 NOT NULL
 );
 
 
@@ -1274,8 +1266,8 @@ CREATE TABLE transfers (
     users integer NOT NULL,
     in_out boolean NOT NULL,
     symbol smallint NOT NULL,
-    amount numeric(14,4) NOT NULL,
-    balance numeric(14,4),
+    amount numeric(14,3) NOT NULL,
+    balance numeric(14,3),
     status character varying DEFAULT 'in progress'::character varying NOT NULL,
     dt_status timestamp without time zone
 );
