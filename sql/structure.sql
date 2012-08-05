@@ -765,7 +765,7 @@ BEGIN
 		v_bp_his	= buying_power(v_order.users);
 
 		IF v_bp_his <= 0 THEN
-			PERFORM punish( v_order.id, v_order.unfilled * v_order.price );
+			PERFORM fee( v_order.users, 'order fail', (v_order.unfilled * v_order.price) * 0.02, v_order.id );
 			CONTINUE;
 		END IF;
 
@@ -773,13 +773,13 @@ BEGIN
 			v_effective = v_order.unfilled;
 		ELSE
 			v_effective = v_bp_his;
-			PERFORM punish( v_order.id, v_order.unfilled * v_order.price - v_bp_his );
+			PERFORM fee( v_order.users, 'order fail', (v_order.unfilled * v_order.price - v_bp_his) * 0.02, v_order.id );
 		END IF;
 
 		v_bp_my	= buying_power(NEW.users);
 
 		IF v_bp_my <= 0 THEN
-			PERFORM punish( NEW.id, v_unfilled * v_order.price * 1.003 );
+			PERFORM fee( NEW.users, 'order fail', (v_unfilled * v_order.price * 1.003) * 0.02, NEW.id);
 			EXIT;
 		END IF;
 
@@ -791,7 +791,7 @@ BEGIN
 
 		IF v_bp_my < v_effective * v_order.price * 1.003 THEN
 			v_effective = v_bp_my;
-			PERFORM punish( NEW.id, v_unfilled * v_order.price * 1.003 - v_bp_my );
+			PERFORM fee( NEW.users, 'order fail', (v_unfilled * v_order.price * 1.003 - v_bp_my ) * 0.02, NEW.id);
 		END IF;
 
 		-- Updating balances + orders
@@ -880,6 +880,10 @@ BEGIN
 		END IF;
 
 		PERFORM pg_notify('scout', 'matched,' || NEW.symbol || ',' || v_order.price || ',' || v_effective);
+
+		-- Taking fee
+
+		PERFORM fee( NEW.users, 'order match', v_effective * v_order.price * 0.002, NEW.id);
 
 		-- Updating last trade for symbol
 
