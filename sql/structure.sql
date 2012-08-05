@@ -931,18 +931,10 @@ BEGIN
 		-- Getting 90% buying power for debit balances
 
 		SELECT SUM( CASE
-				WHEN b.balance > 0 AND s.bid = 0 THEN
-					0
-				WHEN b.balance > 0 AND s.bid < 1 THEN
-					b.balance * s.bid * 0.9
-				WHEN b.balance > 0 AND s.bid >= 1 THEN
-					b.balance / s.bid * 0.9
-				WHEN b.balance < 0 AND s.ask = 0 THEN
-					b.balance * 999
-				WHEN b.balance < 0 AND s.ask < 1 THEN
-					b.balance * s.ask
-				WHEN b.balance < 0 AND s.ask >= 1 THEN
-					b.balance / s.ask
+			WHEN b.balance > 0 THEN
+				b.balance * s.bid * 0.9
+			WHEN b.balance < 0 THEN
+				b.balance * s.ask
 			END ) as power
 		INTO
 			v_bp
@@ -963,8 +955,8 @@ BEGIN
 			b.users,
 			NOW(),
 			NOW() + INTERVAL '365 day',
-			CASE WHEN b.balance > 0 THEN FALSE ELSE TRUE END as buy_sell,
-			CASE WHEN b.balance > 0 THEN 0.0001 ELSE 999 END as price,
+			CASE WHEN b.balance > 0 THEN TRUE ELSE FALSE END as buy_sell,
+			CASE WHEN b.balance > 0 THEN 9999 ELSE 0.0001 END as price,
 			@b.balance,
 			@b.balance,
 			'active',
