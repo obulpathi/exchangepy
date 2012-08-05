@@ -568,8 +568,8 @@ CREATE FUNCTION symbol_update_bidask(v_symbol integer) RETURNS void
     LANGUAGE plpgsql
     AS $$
 DECLARE
-        v_bid   numeric(8,4);
-        v_ask   numeric(8,4);
+        v_bid   numeric(9,5);
+        v_ask   numeric(9,5);
 BEGIN
 
         SELECT
