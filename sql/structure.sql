@@ -798,7 +798,7 @@ BEGIN
 				WHEN NEW.buy_sell = TRUE THEN
 					balance + v_order.price * v_effective * 1.001
 				ELSE
-					balance - v_effective
+					balance - v_order.price * v_effective
 				END
 		WHERE
 			users = v_order.users
