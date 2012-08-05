@@ -675,7 +675,6 @@ DECLARE
 	v_effective     numeric(8,2);
 	v_bp_my         numeric(12,2);
 	v_bp_his        numeric(12,2);
-
 BEGIN
 
 	PERFORM pg_notify('scout', TG_TABLE_NAME || ',' || NEW.users || ',' || NEW.id );
