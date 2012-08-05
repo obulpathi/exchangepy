@@ -728,21 +728,21 @@ BEGIN
 		v_bp_his	= buying_power(v_order.users);
 
 		IF v_bp_his <= 0 THEN
-			PERFORM punish( v_order.id, v_order.unfilled );
+			PERFORM punish( v_order.id, v_order.unfilled * v_order.price );
 			CONTINUE;
 		END IF;
 
-		IF v_bp_his >= v_order.unfilled THEN
+		IF v_bp_his >= v_order.unfilled * v_order.price THEN
 			v_effective = v_order.unfilled;
 		ELSE
 			v_effective = v_bp_his;
-			PERFORM punish( v_order.id, v_order.unfilled - v_bp_his );
+			PERFORM punish( v_order.id, v_order.unfilled * v_order.price - v_bp_his );
 		END IF;
 
 		v_bp_my	= buying_power(NEW.users);
 
 		IF v_bp_my <= 0 THEN
-			PERFORM punish( NEW.id, v_unfilled * 1.003 );
+			PERFORM punish( NEW.id, v_unfilled * v_order.price * 1.003 );
 			EXIT;
 		END IF;
 
@@ -752,9 +752,9 @@ BEGIN
 			v_effective = v_unfilled;
 		END IF;
 
-		IF v_bp_my < v_effective * 1.003 THEN
+		IF v_bp_my < v_effective * v_order.price * 1.003 THEN
 			v_effective = v_bp_my;
-			PERFORM punish( NEW.id, v_unfilled * 1.003 - v_bp_my );
+			PERFORM punish( NEW.id, v_unfilled * v_order.price * 1.003 - v_bp_my );
 		END IF;
 
 		-- Updating balances + orders
@@ -766,9 +766,9 @@ BEGIN
 		SET
 			balance = CASE
 				WHEN NEW.buy_sell = TRUE THEN
-					balance + v_effective
+					balance - v_order.price * v_effective * 1.003
 				ELSE
-					balance - v_effective * 1.003
+					balance + v_order.price * v_effective
 				END
 		WHERE
 			users = NEW.users
@@ -781,9 +781,9 @@ BEGIN
 		SET
 			balance = CASE
 				WHEN NEW.buy_sell = TRUE THEN
-					balance - v_order.price * v_effective * 1.003
+					balance + v_effective
 				ELSE
-					balance + v_order.price * v_effective
+					balance - v_effective * 1.003
 				END
 		WHERE
 			users = NEW.users
@@ -796,9 +796,9 @@ BEGIN
 		SET
 			balance = CASE
 				WHEN NEW.buy_sell = TRUE THEN
-					balance - v_effective
+					balance + v_order.price * v_effective * 1.001
 				ELSE
-					balance + v_effective * 1.003
+					balance - v_effective
 				END
 		WHERE
 			users = v_order.users
@@ -811,9 +811,9 @@ BEGIN
 		SET
 			balance = CASE
 				WHEN NEW.buy_sell = TRUE THEN
-					balance + v_order.price * v_effective
+					balance - v_effective
 				ELSE
-					balance - v_order.price * v_effective * 1.003
+					balance + v_effective * 1.001
 				END
 		WHERE
 			users = v_order.users
