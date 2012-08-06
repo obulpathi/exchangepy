@@ -1082,6 +1082,47 @@ BEGIN
 
 	CLOSE c_users;
 
+	-- Flushing stop orders if any
+
+	INSERT INTO
+		orders_limit(
+			symbol,
+			users,
+			dt,
+			exp_dt,
+			buy_sell,
+			price,
+			amount,
+			unfilled,
+			status,
+			types
+		)
+	SELECT
+		symbol,
+		users,
+		dt,
+		exp_dt,
+		buy_sell,
+		CASE buy_sell
+			WHEN TRUE THEN 9999
+			ELSE 0.00001
+		END,
+		amount,
+		amount,
+		'active',
+		'gtc'
+	FROM
+		orders_stop
+	WHERE
+		symbol = NEW.id
+		AND (
+			( buy_sell = TRUE AND NEW.ask >= price AND OLD.ask < price )
+			OR
+			( buy_sell = FALSE AND NEW.bid <= price AND OLD.bid > price )
+		);
+
+	-- Delete them here
+
 	RETURN NEW;
 END;
 $$;
