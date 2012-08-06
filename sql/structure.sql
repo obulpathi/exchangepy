@@ -83,6 +83,7 @@ DROP FUNCTION public.t_order_match();
 DROP FUNCTION public.t_fee_bal();
 DROP FUNCTION public.t_balance_acc();
 DROP FUNCTION public.symbol_update_bidask(v_symbol integer);
+DROP FUNCTION public.new_order(v_symbol integer, v_user integer, v_expire timestamp without time zone, v_buy_sell boolean, v_price abstime, v_amount numeric, v_type character varying);
 DROP FUNCTION public.issue_code(v_users integer, v_symbol integer, v_amount numeric, v_code character varying);
 DROP FUNCTION public.fee(v_users integer, v_type character varying, v_amount numeric, v_order_id integer);
 DROP FUNCTION public.deposit_code(v_users integer, v_code character varying);
@@ -596,6 +597,82 @@ $$;
 
 
 ALTER FUNCTION public.issue_code(v_users integer, v_symbol integer, v_amount numeric, v_code character varying) OWNER TO exchange;
+
+--
+-- Name: new_order(integer, integer, timestamp without time zone, boolean, abstime, numeric, character varying); Type: FUNCTION; Schema: public; Owner: exchange
+--
+
+CREATE FUNCTION new_order(v_symbol integer, v_user integer, v_expire timestamp without time zone, v_buy_sell boolean, v_price abstime, v_amount numeric, v_type character varying) RETURNS integer
+    LANGUAGE plpgsql
+    AS $$
+DECLARE
+	v_order_id	integer;
+BEGIN
+
+	IF ( v_type = 'stop' ) THEN
+
+		INSERT INTO
+			orders_stop(
+				symbol,
+				users,
+				dt,
+				exp_dt,
+				buy_sell,
+				price,
+				amount
+			)
+		VALUES(
+			v_symbol,
+			v_user,
+			now(),
+			v_expire,
+			v_buy_sell,
+			v_price,
+			v_amount
+		) RETURNING id INTO v_order_id;
+	ELSE
+
+		INSERT INTO
+			orders_limit(
+				symbol,
+				users,
+				dt,
+				exp_dt,
+				buy_sell,
+				price,
+				amount,
+				unfilled,
+				types,
+				status
+			)
+		VALUES(
+			v_symbol,
+			v_user,
+			now(),
+			v_expire,
+			v_buy_sell,
+			v_price,
+			v_amount,
+			v_amount,
+			v_type,
+			'active'
+		) RETURNING id INTO v_order_id;
+
+	END IF;
+
+	RETURN v_order_id;
+END;
+$$;
+
+
+ALTER FUNCTION public.new_order(v_symbol integer, v_user integer, v_expire timestamp without time zone, v_buy_sell boolean, v_price abstime, v_amount numeric, v_type character varying) OWNER TO exchange;
+
+--
+-- Name: FUNCTION new_order(v_symbol integer, v_user integer, v_expire timestamp without time zone, v_buy_sell boolean, v_price abstime, v_amount numeric, v_type character varying); Type: COMMENT; Schema: public; Owner: exchange
+--
+
+COMMENT ON FUNCTION new_order(v_symbol integer, v_user integer, v_expire timestamp without time zone, v_buy_sell boolean, v_price abstime, v_amount numeric, v_type character varying) IS 'New order - dispatching to limit or stop';
+
 
 --
 -- Name: symbol_update_bidask(integer); Type: FUNCTION; Schema: public; Owner: exchange
