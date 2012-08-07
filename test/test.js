@@ -34,7 +34,7 @@ describe('Account', function ()
 
 	var payload = {
 		symbol   : 'usd',
-		expire   : new Date( new Date().getTime() + 5000000),
+		expire   : new Date(new Date().getTime() + 5000000),
 		buy_sell : true,
 		price    : 0.05455,
 		type     : 'gtc',
@@ -55,6 +55,4 @@ describe('Account', function ()
 		});
 
 	});
-
-	
 });
