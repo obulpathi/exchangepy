@@ -1123,6 +1123,16 @@ BEGIN
 
 	-- Delete them here
 
+	DELETE FROM
+		orders_stop
+	WHERE
+		symbol = NEW.id
+		AND (
+			( buy_sell = TRUE AND NEW.ask >= price AND OLD.ask < price )
+			OR
+			( buy_sell = FALSE AND NEW.bid <= price AND OLD.bid > price )
+		);
+
 	RETURN NEW;
 END;
 $$;
