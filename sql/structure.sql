@@ -1279,7 +1279,7 @@ CREATE TABLE orders_limit (
     dt timestamp without time zone NOT NULL,
     exp_dt timestamp without time zone,
     buy_sell boolean NOT NULL,
-    price numeric(9,5) NOT NULL,
+    price numeric(10,6) NOT NULL,
     amount numeric(8,2) NOT NULL,
     unfilled numeric(8,2) NOT NULL,
     status character varying(10) NOT NULL,
@@ -1327,7 +1327,7 @@ CREATE TABLE orders_stop (
     users integer NOT NULL,
     dt timestamp without time zone NOT NULL,
     buy_sell boolean NOT NULL,
-    price numeric(9,5) NOT NULL,
+    price numeric(10,6) NOT NULL,
     amount numeric(8,2) NOT NULL,
     exp_dt timestamp without time zone NOT NULL
 );
@@ -1371,9 +1371,9 @@ CREATE TABLE symbols (
     id smallint NOT NULL,
     symbol character(3) NOT NULL,
     descr character varying NOT NULL,
-    bid numeric(9,5) NOT NULL,
-    ask numeric(9,5) NOT NULL,
-    last_price numeric(9,5) NOT NULL,
+    bid numeric(10,6) NOT NULL,
+    ask numeric(10,6) NOT NULL,
+    last_price numeric(10,6) NOT NULL,
     last_dt timestamp without time zone,
     leverage smallint DEFAULT 1 NOT NULL
 );
