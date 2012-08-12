@@ -1454,7 +1454,7 @@ CREATE TABLE symbols (
     leverage smallint DEFAULT 1 NOT NULL,
     inverted boolean DEFAULT true NOT NULL,
     digits smallint DEFAULT 2 NOT NULL,
-    min_size smallint DEFAULT 1 NOT NULL
+    min_size numeric(6,2) DEFAULT 1 NOT NULL
 );
 
 
