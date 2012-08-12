@@ -85,6 +85,7 @@ DROP FUNCTION public.t_balance_acc();
 DROP FUNCTION public.symbol_update_bidask(v_symbol integer);
 DROP FUNCTION public.new_order(v_symbol integer, v_user integer, v_expire timestamp without time zone, v_buy_sell boolean, v_price numeric, v_amount numeric, v_type character varying);
 DROP FUNCTION public.issue_code(v_users integer, v_symbol integer, v_amount numeric, v_code character varying);
+DROP FUNCTION public.get_book(v_symbol integer, v_grid numeric, v_inverted boolean);
 DROP FUNCTION public.fee(v_users integer, v_type character varying, v_amount numeric, v_order_id integer);
 DROP FUNCTION public.deposit_code(v_users integer, v_code character varying);
 DROP FUNCTION public.buying_power(v_users integer);
@@ -514,6 +515,81 @@ $$;
 
 
 ALTER FUNCTION public.fee(v_users integer, v_type character varying, v_amount numeric, v_order_id integer) OWNER TO exchange;
+
+--
+-- Name: get_book(integer, numeric, boolean); Type: FUNCTION; Schema: public; Owner: exchange
+--
+
+CREATE FUNCTION get_book(v_symbol integer, v_grid numeric, v_inverted boolean) RETURNS SETOF record
+    LANGUAGE plpgsql
+    AS $$
+BEGIN
+
+	IF v_inverted = TRUE THEN
+
+		RETURN QUERY
+
+		SELECT
+			CASE buy_sell
+				WHEN TRUE THEN floor( 1 / ( price * v_grid )) * v_grid
+				WHEN FALSE THEN ceil( 1 / ( price * v_grid )) * v_grid
+			END,
+			buy_sell,
+			SUM(unfilled) size
+		FROM
+			orders_limit
+		WHERE
+			symbol = v_symbol
+			AND status = 'active'
+			AND exp_dt >= NOW()
+			AND unfilled > 0
+		GROUP BY
+			buy_sell, CASE buy_sell
+				WHEN TRUE THEN floor( 1 / ( price * v_grid )) * v_grid
+				WHEN FALSE THEN ceil( 1 / ( price * v_grid )) * v_grid
+			END
+		ORDER BY
+			buy_sell, CASE buy_sell
+				WHEN TRUE THEN floor( 1 / ( price * v_grid )) * v_grid
+				WHEN FALSE THEN ceil( 1 / ( price * v_grid )) * v_grid
+			END DESC;
+
+	ELSE
+
+		RETURN QUERY
+
+		SELECT
+			CASE buy_sell
+				WHEN TRUE THEN floor(price / v_grid) * v_grid
+				WHEN FALSE THEN ceil(price / v_grid) * v_grid
+			END,
+			buy_sell,
+			SUM(unfilled) size
+		FROM
+			orders_limit
+		WHERE
+			symbol = v_symbol
+			AND status = 'active'
+			AND exp_dt >= NOW()
+			AND unfilled > 0
+		GROUP BY
+			buy_sell, CASE buy_sell
+				WHEN TRUE THEN floor(price / v_grid) * v_grid
+				WHEN FALSE THEN ceil(price / v_grid) * v_grid
+			END
+		ORDER BY
+			buy_sell, CASE buy_sell
+				WHEN TRUE THEN floor(price / v_grid) * v_grid
+				WHEN FALSE THEN ceil(price / v_grid) * v_grid
+			END DESC;
+
+	END IF;
+
+END;
+$$;
+
+
+ALTER FUNCTION public.get_book(v_symbol integer, v_grid numeric, v_inverted boolean) OWNER TO exchange;
 
 --
 -- Name: issue_code(integer, integer, numeric, character varying); Type: FUNCTION; Schema: public; Owner: exchange
