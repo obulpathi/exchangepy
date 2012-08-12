@@ -1451,7 +1451,10 @@ CREATE TABLE symbols (
     ask numeric(10,6) NOT NULL,
     last_price numeric(10,6) NOT NULL,
     last_dt timestamp without time zone,
-    leverage smallint DEFAULT 1 NOT NULL
+    leverage smallint DEFAULT 1 NOT NULL,
+    inverted boolean DEFAULT true NOT NULL,
+    digits smallint DEFAULT 2 NOT NULL,
+    min_size smallint DEFAULT 1 NOT NULL
 );
 
 
