@@ -1331,7 +1331,7 @@ ALTER SEQUENCE fees_id_seq OWNED BY fees.id;
 CREATE TABLE matched (
     buy integer NOT NULL,
     sell integer NOT NULL,
-    amount numeric(8,2) NOT NULL
+    amount numeric(8,1) NOT NULL
 );
 
 
@@ -1355,9 +1355,9 @@ CREATE TABLE orders_limit (
     dt timestamp without time zone NOT NULL,
     exp_dt timestamp without time zone,
     buy_sell boolean NOT NULL,
-    price numeric(10,6) NOT NULL,
-    amount numeric(8,2) NOT NULL,
-    unfilled numeric(8,2) NOT NULL,
+    price numeric(10,4) NOT NULL,
+    amount numeric(8,1) NOT NULL,
+    unfilled numeric(8,1) NOT NULL,
     status character varying(10) NOT NULL,
     types character varying(10) NOT NULL
 );
@@ -1403,8 +1403,8 @@ CREATE TABLE orders_stop (
     users integer NOT NULL,
     dt timestamp without time zone NOT NULL,
     buy_sell boolean NOT NULL,
-    price numeric(10,6) NOT NULL,
-    amount numeric(8,2) NOT NULL,
+    price numeric(10,4) NOT NULL,
+    amount numeric(8,1) NOT NULL,
     exp_dt timestamp without time zone NOT NULL
 );
 
@@ -1447,12 +1447,11 @@ CREATE TABLE symbols (
     id smallint NOT NULL,
     symbol character(3) NOT NULL,
     descr character varying NOT NULL,
-    bid numeric(10,6) NOT NULL,
-    ask numeric(10,6) NOT NULL,
-    last_price numeric(10,6) NOT NULL,
+    bid numeric(10,4) NOT NULL,
+    ask numeric(10,4) NOT NULL,
+    last_price numeric(10,4) NOT NULL,
     last_dt timestamp without time zone,
     leverage smallint DEFAULT 1 NOT NULL,
-    inverted boolean DEFAULT true NOT NULL,
     digits smallint DEFAULT 2 NOT NULL,
     min_size numeric(6,2) DEFAULT 1 NOT NULL
 );
