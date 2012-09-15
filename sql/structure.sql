@@ -288,7 +288,7 @@ CREATE FUNCTION buying_power(v_users integer) RETURNS numeric
 BEGIN
 	RETURN SUM( CASE
 			WHEN b.balance > 0 THEN
-				s.leverage * b.balance * s.bid
+				b.balance * s.bid
 			WHEN b.balance < 0 THEN
 				b.balance * s.ask
 		END ) as power
@@ -858,6 +858,7 @@ DECLARE
 	v_effective     numeric(8,2);
 	v_bp_my         numeric(12,2);
 	v_bp_his        numeric(12,2);
+	v_margin	integer;
 BEGIN
 
 	PERFORM pg_notify('scout', TG_TABLE_NAME || ',' || NEW.users || ',' || NEW.id );
@@ -895,6 +896,17 @@ BEGIN
 
 	END IF;
 
+	-- Getting symbol margin levels
+
+	SELECT
+		margin / 100
+	INTO
+		v_margin
+	FROM
+		symbols
+	WHERE
+		id = NEW.symbol;
+
 	v_unfilled = NEW.unfilled;
 
 	LOOP
@@ -915,17 +927,17 @@ BEGIN
 			CONTINUE;
 		END IF;
 
-		IF v_bp_his >= v_order.unfilled * v_order.price THEN
+		IF v_bp_his >= v_order.unfilled * v_order.price * v_margin THEN
 			v_effective = v_order.unfilled;
 		ELSE
-			v_effective = v_bp_his;
-			PERFORM fee( v_order.users, 'order fail', (v_order.unfilled * v_order.price - v_bp_his) * 0.02, v_order.id );
+			v_effective = v_bp_his / v_margin;
+			PERFORM fee( v_order.users, 'order fail', (v_order.unfilled * v_order.price * v_margin - v_bp_his) * 0.02, v_order.id );
 		END IF;
 
 		v_bp_my	= buying_power(NEW.users);
 
 		IF v_bp_my <= 0 THEN
-			PERFORM fee( NEW.users, 'order fail', (v_unfilled * v_order.price * 1.003) * 0.02, NEW.id);
+			PERFORM fee( NEW.users, 'order fail', (v_unfilled * v_order.price * v_margin * 1.003) * 0.02, NEW.id);
 			EXIT;
 		END IF;
 
@@ -935,9 +947,9 @@ BEGIN
 			v_effective = v_unfilled;
 		END IF;
 
-		IF v_bp_my < v_effective * v_order.price * 1.003 THEN
-			v_effective = v_bp_my;
-			PERFORM fee( NEW.users, 'order fail', (v_unfilled * v_order.price * 1.003 - v_bp_my ) * 0.02, NEW.id);
+		IF v_bp_my < v_effective * v_order.price * v_margin * 1.003 THEN
+			v_effective = v_bp_my / v_margin;
+			PERFORM fee( NEW.users, 'order fail', (v_unfilled * v_order.price * v_margin * 1.003 - v_bp_my ) * 0.02, NEW.id);
 		END IF;
 
 		-- Updating balances + orders
@@ -1451,7 +1463,7 @@ CREATE TABLE symbols (
     ask numeric(10,4) NOT NULL,
     last_price numeric(10,4) NOT NULL,
     last_dt timestamp without time zone,
-    leverage smallint DEFAULT 1 NOT NULL,
+    margin smallint DEFAULT 50 NOT NULL,
     digits smallint DEFAULT 2 NOT NULL,
     min_size numeric(6,2) DEFAULT 1 NOT NULL
 );
