@@ -1,4 +1,4 @@
-node-bitcoin-exchange
-=====================
+exchangepy
+==========
 
-Bitcoin exchange - short sell, margin trading, CFDs
+Bitcoin exchange written in Python.
